@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Flappy Carrot Man: Lives + Mushrooms</title>
+  <title>Flappy Carrot Man: Rainbow Knife Tunnel</title>
   <style>
     body{margin:0;overflow:hidden;background:#222;font-family:'Comic Sans MS','Chalkboard SE',sans-serif;touch-action:none;user-select:none}
-    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:-1;background:linear-gradient(to bottom,#2c3e50,#4ca1af)}
-    #gameCanvas{display:block;margin:0 auto;width:100%;height:100vh;max-width:600px;border-left:2px solid rgba(255,255,255,.2);border-right:2px solid rgba(255,255,255,.2);background:rgba(0,0,0,.10)}
-    #ui{position:absolute;top:3%;width:100%;text-align:center;pointer-events:none;z-index:10;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.6)}
+    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:-1;background:#000}
+    #gameCanvas{display:block;margin:0 auto;width:100%;height:100vh;max-width:600px;border-left:2px solid rgba(255,255,255,.25);border-right:2px solid rgba(255,255,255,.25);background:rgba(0,0,0,.10)}
+    #ui{position:absolute;top:3%;width:100%;text-align:center;pointer-events:none;z-index:10;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.65)}
     #score{font-size:54px;font-weight:900;line-height:1}
-    #meta{font-size:18px;font-weight:800;opacity:.95}
+    #meta{font-size:18px;font-weight:900;opacity:.95}
     #meta span{margin:0 10px}
     #start,#over{
       position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-      width:82%;max-width:430px;background:rgba(255,255,255,.95);
+      width:82%;max-width:440px;background:rgba(255,255,255,.95);
       border:4px solid #ff8c00;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.5);
       padding:22px;text-align:center;z-index:20
     }
@@ -47,9 +47,10 @@
 </div>
 
 <div id="start">
-  <h1>Flappy Carrot Man</h1>
+  <h1>Rainbow Knife Tunnel</h1>
   <p>Click / Tap / Space to flap.</p>
-  <p>Start with 3 lives. 🍄 gives +1 life. Hit = -1 life.</p>
+  <p>+1 life per 🍄. -1 life per hit.</p>
+  <p>Every 10 knives passed → next level (faster).</p>
   <button onclick="startGame()">PLAY</button>
 </div>
 
@@ -64,12 +65,12 @@
 
 <script>
 /* =========================
-   BACKGROUND: hundreds carrots
+   BACKGROUND: rainbow + carrots
    ========================= */
 const bgCanvas = document.getElementById('bgCanvas');
 const bgCtx = bgCanvas.getContext('2d');
 const bgCarrots = [];
-const BG_COUNT = 220;
+const BG_COUNT = 240;
 
 function resizeBg(){ bgCanvas.width = innerWidth; bgCanvas.height = innerHeight; }
 addEventListener('resize', resizeBg); resizeBg();
@@ -78,23 +79,23 @@ class BgCarrot{
   constructor(){ this.reset(true); }
   reset(first=false){
     this.x = Math.random()*bgCanvas.width;
-    this.y = first ? Math.random()*bgCanvas.height : bgCanvas.height + 80 + Math.random()*200;
-    this.s = Math.random()*0.65 + 0.10;
-    this.vy = Math.random()*1.3 + 0.35;
-    this.vx = (Math.random()-0.5)*0.6;
+    this.y = first ? Math.random()*bgCanvas.height : bgCanvas.height + 100 + Math.random()*250;
+    this.s = Math.random()*0.70 + 0.10;
+    this.vy = Math.random()*1.35 + 0.35;
+    this.vx = (Math.random()-0.5)*0.7;
     this.r = Math.random()*Math.PI*2;
-    this.vr = (Math.random()-0.5)*0.04;
-    this.a = Math.random()*0.35 + 0.10;
+    this.vr = (Math.random()-0.5)*0.05;
+    this.a = Math.random()*0.28 + 0.08;
     this.bop = Math.random()*2.2 + 0.8;
     this.bopPhase = Math.random()*Math.PI*2;
   }
   update(t){
     this.y -= this.vy;
-    this.x += this.vx + Math.sin(t*0.002 + this.bopPhase)*0.15;
+    this.x += this.vx + Math.sin(t*0.002 + this.bopPhase)*0.20;
     this.r += this.vr;
-    if(this.y < -120) this.reset(false);
-    if(this.x < -100) this.x = bgCanvas.width + 100;
-    if(this.x > bgCanvas.width + 100) this.x = -100;
+    if(this.y < -140) this.reset(false);
+    if(this.x < -120) this.x = bgCanvas.width + 120;
+    if(this.x > bgCanvas.width + 120) this.x = -120;
   }
   draw(t){
     bgCtx.save();
@@ -105,16 +106,27 @@ class BgCarrot{
 
     const dance = Math.sin(t*0.01 + this.bopPhase) * this.bop;
     bgCtx.fillStyle = '#ff8c00';
-    bgCtx.beginPath(); bgCtx.ellipse(0, 0, 11, 32 + dance, 0, 0, Math.PI*2); bgCtx.fill();
+    bgCtx.beginPath(); bgCtx.ellipse(0, 0, 11, 34 + dance, 0, 0, Math.PI*2); bgCtx.fill();
     bgCtx.fillStyle = '#4caf50';
-    bgCtx.beginPath(); bgCtx.ellipse(0, -32 - dance, 6, 13, Math.PI/6, 0, Math.PI*2); bgCtx.fill();
-
+    bgCtx.beginPath(); bgCtx.ellipse(0, -34 - dance, 6, 14, Math.PI/6, 0, Math.PI*2); bgCtx.fill();
     bgCtx.restore();
   }
 }
 for(let i=0;i<BG_COUNT;i++) bgCarrots.push(new BgCarrot());
+
+function drawRainbowBg(t){
+  // HSL hue cycling rainbow background (common technique) [web:68]
+  const hue = (t * 0.02) % 360;
+  const g = bgCtx.createLinearGradient(0,0,0,bgCanvas.height);
+  g.addColorStop(0, `hsl(${hue}, 90%, 55%)`);
+  g.addColorStop(0.5, `hsl(${(hue+120)%360}, 90%, 55%)`);
+  g.addColorStop(1, `hsl(${(hue+240)%360}, 90%, 55%)`);
+  bgCtx.fillStyle = g;
+  bgCtx.fillRect(0,0,bgCanvas.width,bgCanvas.height);
+}
+
 function bgLoop(t){
-  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  drawRainbowBg(t);
   for(const c of bgCarrots){ c.update(t); c.draw(t); }
   requestAnimationFrame(bgLoop);
 }
@@ -147,36 +159,40 @@ function resizeGame(){
 addEventListener('resize', resizeGame); resizeGame();
 
 const memes = [
-  "Carrot man down! 🥕",
-  "Knife to meet you... again. 🔪",
-  "That was a *close shave* (but for carrots).",
-  "You got diced with extra drama."
+  "This kitchen is *un-peel-ievable*. 🥕",
+  "The knives said: 'slice to meet you'. 🔪",
+  "You got… *rooted* by danger.",
+  "Carrot man needs a helmet."
 ];
 
-// EASIER SETTINGS
+// State
 let state='START';
-let frame=0, score=0, level=1;
-
-let speed=2.6;
-let spawnEvery=170;
-let bunnyEvery=360;
-let mushEvery=190;
-let movingKnifeChance=0.25;
-
-let lives=3;        // NEW: life counter
+let frame=0;
+let score=0;              // counts knives passed
+let level=1;              // increases every 10 knives
+let lives=3;
 let invuln=0;
 
-let sizeMult=1.0;   // size is now just “fun + hitbox”, not lives
-const SIZE_UP=0.22;
-const SIZE_DOWN_ON_HIT=0.18;
+let sizeMult=1.0;
+const SIZE_UP=0.18;
+const SIZE_DOWN_ON_HIT=0.15;
+
+// Easier tuning
+let speedBase=2.4;         // base world speed
+let speedPerLevel=0.22;    // speed jump each 10 knives
+let speed=2.4;
+
+let spawnEvery=175;        // vertical knife pairs
+let spinEvery=280;         // spinning knives
+let tunnelEvery=360;       // horizontal tunnel
+let mushEvery=200;         // mushrooms
+let bunnyEvery=420;        // fewer bunnies
 
 function hearts(n){
-  // cap visual hearts so it doesn't become a giant UI wall
   const shown = Math.min(n, 12);
-  const extra = n > shown ? ` +${n-shown}` : '';
+  const extra = n>shown ? ` +${n-shown}` : '';
   return '❤️'.repeat(shown) + extra;
 }
-
 function updateUI(){
   uiScore.textContent = score;
   uiLives.textContent = `Lives: ${hearts(lives)}`;
@@ -184,30 +200,53 @@ function updateUI(){
   uiLevel.textContent = `Level: ${level}`;
 }
 
+// Level every 10 knives
 function computeLevel(){
-  level = Math.floor(score / 15) + 1;
-  speed = 2.6 + (level-1)*0.20;
-  spawnEvery = Math.max(120, 170 - (level-1)*3);
-  bunnyEvery = Math.max(240, 360 - (level-1)*6);
-  mushEvery  = Math.max(160, 190 - (level-1)*1);
+  level = Math.floor(score / 10) + 1;
+  speed = speedBase + (level-1)*speedPerLevel;
+
+  // keep spawn generous even at high level
+  spawnEvery = Math.max(135, 175 - (level-1)*2);
+  spinEvery  = Math.max(220, 280 - (level-1)*2);
+  tunnelEvery= Math.max(280, 360 - (level-1)*2);
+  mushEvery  = Math.max(160, 200 - (level-1)*1);
+  bunnyEvery = Math.max(320, 420 - (level-1)*2);
 }
 
+// Input
 function flap(){
   if(state!=='PLAY') return;
-  player.vy = -7.6;
+  player.vy = -7.8;           // easier: strong flap
   if(music.paused) music.play().catch(()=>{});
 }
 addEventListener('mousedown', flap);
 addEventListener('touchstart', (e)=>{ e.preventDefault(); flap(); }, {passive:false});
 addEventListener('keydown', (e)=>{ if(e.code==='Space'||e.code==='ArrowUp') flap(); });
 
+// Player: carrot man
 const player = {
-  x: 110,
+  x: 115,
   y: 200,
   vy: 0,
-  gravity: 0.28,
+  gravity: 0.27, // easier gravity
   baseW: 44,
   baseH: 86,
+  update(){
+    this.vy += this.gravity;
+    this.y += this.vy;
+    const margin = 26;
+    if(this.y < margin){ this.y = margin; this.vy = 0; }
+    if(this.y > canvas.height - margin){ this.y = canvas.height - margin; this.vy = 0; }
+  },
+  hit(){
+    if(invuln>0) return;
+    lives -= 1;
+    sizeMult = Math.max(0.65, sizeMult - SIZE_DOWN_ON_HIT);
+    invuln = 75;
+    flashEl.style.opacity = 0.50;
+    setTimeout(()=>flashEl.style.opacity=0, 110);
+    if(lives<=0) endGame();
+  },
   draw(){
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -270,15 +309,11 @@ const player = {
 
     // leafy top
     ctx.fillStyle = '#4caf50';
-    ctx.beginPath();
-    ctx.ellipse(0, -h*0.50, 10*sizeMult, 18*sizeMult, Math.PI/9, 0, Math.PI*2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(-8*sizeMult, -h*0.48, 9*sizeMult, 14*sizeMult, -Math.PI/10, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -h*0.50, 10*sizeMult, 18*sizeMult, Math.PI/9, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-8*sizeMult, -h*0.48, 9*sizeMult, 14*sizeMult, -Math.PI/10, 0, Math.PI*2); ctx.fill();
 
-    // face: reacts to size & lives
-    const mood = (lives <= 1) ? 3 : Math.min(3, Math.floor((sizeMult - 1)/0.7)+1);
+    // face (bigger => sillier)
+    const mood = (lives<=1) ? 3 : Math.min(3, Math.floor((sizeMult - 1)/0.7)+1);
     const eyeR = 6*sizeMult;
     const eyeY = -h*0.15;
 
@@ -294,40 +329,24 @@ const player = {
     ctx.fillStyle='black';
     if(mood===1){
       ctx.beginPath(); ctx.arc(0, h*0.02, 7*sizeMult, 0, Math.PI, false); ctx.fill();
-    }else if(mood===2){
+    } else if(mood===2){
       ctx.beginPath(); ctx.ellipse(0, h*0.08, 6*sizeMult, 10*sizeMult, 0, 0, Math.PI*2); ctx.fill();
-    }else{
+    } else {
       ctx.beginPath(); ctx.ellipse(0, h*0.10, 9*sizeMult, 13*sizeMult, 0, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle='pink';
       ctx.beginPath(); ctx.ellipse(0, h*0.15, 5*sizeMult, 5*sizeMult, 0, 0, Math.PI*2); ctx.fill();
     }
 
     ctx.restore();
-  },
-  update(){
-    this.vy += this.gravity;
-    this.y += this.vy;
-    const margin = 26;
-    if(this.y < margin){ this.y = margin; this.vy = 0; }
-    if(this.y > canvas.height - margin){ this.y = canvas.height - margin; this.vy = 0; }
-  },
-  hit(){
-    if(invuln>0) return;
-
-    lives -= 1;                       // NEW: lose a life
-    sizeMult = Math.max(0.65, sizeMult - SIZE_DOWN_ON_HIT); // still shrink for feedback
-    invuln = 70;
-
-    flashEl.style.opacity = 0.50;
-    setTimeout(()=>flashEl.style.opacity=0, 110);
-
-    if(lives <= 0) endGame();
   }
 };
 
+// Collision helpers (axis-aligned; we use forgiving boxes for rotated knives)
 function aabb(ax,ay,aw,ah,bx,by,bw,bh){
   return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
 }
+
+// Drawing: 3D knife (vertical)
 function roundRect(x,y,w,h,r){
   ctx.beginPath();
   ctx.moveTo(x+r,y);
@@ -368,7 +387,7 @@ function drawKnife3D(x,y,w,h,dir){
     ctx.strokeStyle='rgba(255,255,255,0.85)';
     ctx.lineWidth=2;
     ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(12,Math.max(0,h-10)); ctx.stroke();
-  }else{
+  } else {
     let hg=ctx.createLinearGradient(0,0,w,0);
     hg.addColorStop(0,'#1f2b35'); hg.addColorStop(0.35,'#5db6c8'); hg.addColorStop(1,'#141b22');
     ctx.fillStyle=hg; roundRect(5,0,w-10,handleH,7); ctx.fill();
@@ -393,6 +412,88 @@ function drawKnife3D(x,y,w,h,dir){
   }
   ctx.restore();
 }
+
+// Spinning knife (rotated), collision uses a forgiving AABB around it
+function drawSpinningKnife(cx, cy, L, angle){
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+
+  // blade
+  const w = 18;
+  const h = L;
+  const bg = ctx.createLinearGradient(-w/2,0,w/2,0);
+  bg.addColorStop(0,'#7f8c8d');
+  bg.addColorStop(0.25,'#ffffff');
+  bg.addColorStop(0.6,'#ecf0f1');
+  bg.addColorStop(1,'#7f8c8d');
+  ctx.fillStyle = bg;
+
+  ctx.beginPath();
+  ctx.moveTo(-w/2, -h/2);
+  ctx.lineTo( w/2, -h/2);
+  ctx.lineTo( w/2,  h/2 - 20);
+  ctx.quadraticCurveTo(0, h/2, -w/2, h/2 - 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // handle
+  const hg = ctx.createLinearGradient(-w/2, -h/2 - 28, w/2, -h/2 - 28);
+  hg.addColorStop(0,'#1f2b35'); hg.addColorStop(0.4,'#5db6c8'); hg.addColorStop(1,'#141b22');
+  ctx.fillStyle = hg;
+  roundRect(-w/2, -h/2 - 32, w, 32, 6);
+  ctx.fill();
+
+  ctx.fillStyle='#f1c40f';
+  ctx.beginPath(); ctx.arc(0, -h/2 - 20, 3, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+// Horizontal tunnel knives: left/right blades closing in (top & bottom)
+function drawHorizontalKnife(x, y, length, thickness, dir /*'left'|'right'*/){
+  ctx.save();
+  ctx.translate(x,y);
+
+  // shadow
+  ctx.shadowColor='rgba(0,0,0,0.45)';
+  ctx.shadowBlur=8;
+  ctx.shadowOffsetX=4;
+  ctx.shadowOffsetY=4;
+
+  const bladeG = ctx.createLinearGradient(0,0,0,thickness);
+  bladeG.addColorStop(0,'#ffffff');
+  bladeG.addColorStop(0.5,'#dfe6e9');
+  bladeG.addColorStop(1,'#7f8c8d');
+  ctx.fillStyle = bladeG;
+
+  // blade body
+  ctx.beginPath();
+  if(dir==='right'){
+    ctx.moveTo(0,0);
+    ctx.lineTo(length-22,0);
+    ctx.quadraticCurveTo(length, thickness/2, length-22, thickness);
+    ctx.lineTo(0, thickness);
+  } else {
+    ctx.moveTo(0,0);
+    ctx.lineTo(22,0);
+    ctx.quadraticCurveTo(0, thickness/2, 22, thickness);
+    ctx.lineTo(length, thickness);
+    ctx.lineTo(length,0);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // handle as little block at far end
+  ctx.fillStyle = '#1f2b35';
+  if(dir==='right') roundRect(-26, 2, 26, thickness-4, 6);
+  else roundRect(length, 2, 26, thickness-4, 6);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// Mushroom
 function drawMushroom(x,y,scale=1){
   ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
   ctx.fillStyle='#f5f5f5';
@@ -407,6 +508,8 @@ function drawMushroom(x,y,scale=1){
   }
   ctx.restore();
 }
+
+// Bunny
 function drawBunny(x,y,scale=1){
   ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
   ctx.fillStyle='rgba(0,0,0,0.15)';
@@ -428,36 +531,71 @@ function drawBunny(x,y,scale=1){
 }
 
 // Entities
-const knifePairs=[], mushrooms=[], bunnies=[];
+const knifePairs = [];   // classic top/bottom vertical knives
+const spinners  = [];    // spinning knives in the gap
+const tunnels   = [];    // horizontal tunnel segments
+const mushrooms = [];
+const bunnies   = [];
 
 function spawnKnifePair(){
-  const gap = 280 - Math.min(70, (level-1)*4);
-  const minY = 140;
-  const maxY = canvas.height - 140;
+  const gap = 300 - Math.min(70, (level-1)*3); // bigger gap => easier
+  const minY = 150;
+  const maxY = canvas.height - 150;
   const centerY = Math.random()*(maxY-minY) + minY;
 
-  const moving = Math.random() < movingKnifeChance;
-  const amp = moving ? (14 + Math.random()*35) : 0;
-  const freq = moving ? (0.010 + Math.random()*0.015) : 0;
+  // some move up/down (but not many)
+  const moving = Math.random() < 0.22;
+  const amp = moving ? (10 + Math.random()*28) : 0;
+  const freq = moving ? (0.010 + Math.random()*0.012) : 0;
   const phase = Math.random()*Math.PI*2;
 
   knifePairs.push({ x: canvas.width+30, centerY, gap, w: 54, moving, amp, freq, phase, passed:false });
 }
+
+function spawnSpinner(){
+  // spinner placed roughly mid-screen height range
+  spinners.push({
+    x: canvas.width + 40,
+    y: 120 + Math.random()*(canvas.height-240),
+    L: 120 + Math.random()*90,
+    ang: Math.random()*Math.PI*2,
+    av: (Math.random()<0.5 ? -1 : 1) * (0.06 + Math.random()*0.04) // spin speed
+  });
+}
+
+function spawnTunnel(){
+  // A short “tunnel” segment: top+bottom horizontal knives that squeeze the path
+  const segW = 160; // how long the tunnel segment is
+  const centerY = 140 + Math.random()*(canvas.height-280);
+  const gap = 190 - Math.min(40, (level-1)*2); // still generous
+
+  tunnels.push({
+    x: canvas.width + 30,
+    w: segW,
+    cy: centerY,
+    gap,
+    // slight breathing motion
+    phase: Math.random()*Math.PI*2,
+    amp: 10 + Math.random()*10
+  });
+}
+
 function spawnMushroom(){
   mushrooms.push({ x: canvas.width+30, y: 110 + Math.random()*(canvas.height-220), bobPhase: Math.random()*Math.PI*2 });
 }
+
 function spawnBunny(){
   bunnies.push({
     x: canvas.width+60,
     y: 110 + Math.random()*(canvas.height-220),
-    vx: speed + 0.7 + Math.random()*0.8,
-    vy: (Math.random()-0.5)*0.6,
+    vx: speed + 0.5 + Math.random()*0.7,
+    vy: (Math.random()-0.5)*0.55,
     t: 0
   });
 }
 
 function applyMushroom(){
-  lives += 1;                               // NEW: gain a life
+  lives += 1;
   sizeMult = Math.min(5.0, sizeMult + SIZE_UP);
 }
 
@@ -469,11 +607,13 @@ function endGame(){
 }
 
 function reset(){
-  frame=0; score=0; level=1;
-  speed=2.6; spawnEvery=170; bunnyEvery=360; mushEvery=190; movingKnifeChance=0.25;
-  lives=3; invuln=0; sizeMult=1.0;
+  frame=0; score=0; level=1; lives=3; invuln=0; sizeMult=1.0;
+  speedBase=2.4; speedPerLevel=0.22; speed=2.4;
+
+  knifePairs.length=0; spinners.length=0; tunnels.length=0;
+  mushrooms.length=0; bunnies.length=0;
+
   player.y=200; player.vy=0;
-  knifePairs.length=0; mushrooms.length=0; bunnies.length=0;
   updateUI();
 }
 
@@ -484,6 +624,7 @@ function startGame(){
   state='PLAY';
   requestAnimationFrame(loop);
 }
+
 function restart(){
   overEl.classList.add('hidden');
   reset();
@@ -493,25 +634,29 @@ function restart(){
 
 function loop(){
   if(state!=='PLAY') return;
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
   frame++;
   if(invuln>0) invuln--;
 
   computeLevel();
 
+  // spawns (keep it easier: less frequent overall)
   if(frame % spawnEvery === 0) spawnKnifePair();
+  if(frame % spinEvery === 0 && level >= 2) spawnSpinner();
+  if(frame % tunnelEvery === 0 && level >= 3) spawnTunnel();
   if(frame % mushEvery === 0) spawnMushroom();
-  if(frame % bunnyEvery === 0) spawnBunny();
+  if(frame % bunnyEvery === 0 && level >= 2) spawnBunny();
 
   player.update();
 
-  // forgiving player hitbox
+  // player hitbox (forgiving)
   const pw = 24 * sizeMult;
   const ph = 46 * sizeMult;
   const px = player.x - pw/2;
   const py = player.y - ph/2;
 
-  // knives
+  // 1) Vertical knife pairs (score counts here: each passed pair = +1 knife)
   for(let i=knifePairs.length-1;i>=0;i--){
     const k = knifePairs[i];
     k.x -= speed;
@@ -526,26 +671,77 @@ function loop(){
     drawKnife3D(k.x, 0, k.w, Math.max(10, topH), 'down');
     drawKnife3D(k.x, canvas.height, k.w, Math.max(10, botH), 'up');
 
-    // narrower knife hitbox (easier)
-    const kx = k.x + 8;
-    const kw = k.w - 16;
+    // narrower hitbox (easier)
+    const kx = k.x + 10;
+    const kw = k.w - 20;
 
     const hitTop = aabb(px,py,pw,ph, kx, 0, kw, topH);
     const hitBot = aabb(px,py,pw,ph, kx, botY, kw, botH);
     if((hitTop||hitBot) && invuln<=0) player.hit();
 
     if(!k.passed && k.x + k.w < player.x){
-      score += 1;
+      score += 1;          // KNIVES PASSED
       k.passed = true;
       updateUI();
     }
-    if(k.x + k.w < -80) knifePairs.splice(i,1);
+    if(k.x + k.w < -90) knifePairs.splice(i,1);
   }
 
-  // mushrooms
+  // 2) Spinning knives (rotated). Use big forgiving AABB around center.
+  for(let i=spinners.length-1;i>=0;i--){
+    const s = spinners[i];
+    s.x -= speed * 0.95;
+    s.ang += s.av;
+
+    drawSpinningKnife(s.x, s.y, s.L, s.ang);
+
+    // Forgiving AABB hitbox (smaller than visual)
+    const hbW = 38;
+    const hbH = 38;
+    if(aabb(px,py,pw,ph, s.x - hbW/2, s.y - hbH/2, hbW, hbH) && invuln<=0){
+      player.hit();
+    }
+
+    if(s.x < -120) spinners.splice(i,1);
+  }
+
+  // 3) Horizontal tunnel knives (top+bottom). Creates careful steering.
+  for(let i=tunnels.length-1;i>=0;i--){
+    const t = tunnels[i];
+    t.x -= speed;
+
+    // breathing: slightly move gap center
+    const breathe = Math.sin(frame*0.04 + t.phase) * t.amp;
+    const cy = t.cy + breathe;
+
+    const topY = cy - t.gap/2;
+    const botY = cy + t.gap/2;
+
+    // Draw top horizontal blade pointing inward from left edge of segment
+    // We'll draw a blade along the segment width, placed near top edge of the tunnel
+    const thick = 26;
+
+    // top knife: sits at y = topY - thick
+    drawHorizontalKnife(t.x, topY - thick, t.w, thick, 'right');
+    // bottom knife: sits at y = botY
+    drawHorizontalKnife(t.x, botY, t.w, thick, 'right');
+
+    // Collision boxes (forgiving: slightly inset)
+    const inset = 6;
+    const hx = t.x + inset;
+    const hw = t.w - inset*2;
+
+    const hitTop = aabb(px,py,pw,ph, hx, topY - thick + 2, hw, thick - 4);
+    const hitBot = aabb(px,py,pw,ph, hx, botY + 2, hw, thick - 4);
+    if((hitTop||hitBot) && invuln<=0) player.hit();
+
+    if(t.x + t.w < -120) tunnels.splice(i,1);
+  }
+
+  // 4) Mushrooms
   for(let i=mushrooms.length-1;i>=0;i--){
     const m = mushrooms[i];
-    m.x -= speed*0.85;
+    m.x -= speed*0.82;
     const bob = Math.sin(frame*0.06 + m.bobPhase)*5;
     drawMushroom(m.x, m.y+bob, 1.0);
 
@@ -553,30 +749,32 @@ function loop(){
       applyMushroom();
       mushrooms.splice(i,1);
       updateUI();
-    } else if(m.x < -60){
+    } else if(m.x < -70){
       mushrooms.splice(i,1);
     }
   }
 
-  // bunnies
+  // 5) Bunnies (fewer, gentler chase)
   for(let i=bunnies.length-1;i>=0;i--){
     const b = bunnies[i];
     b.t += 1;
     b.x -= b.vx;
 
-    const chase = (player.y - b.y) * 0.006;
-    b.y += b.vy + chase + Math.sin((frame+b.t)*0.08)*0.6;
-    b.y = Math.max(50, Math.min(canvas.height-50, b.y));
+    const chase = (player.y - b.y) * 0.005;
+    b.y += b.vy + chase + Math.sin((frame+b.t)*0.08)*0.55;
+    b.y = Math.max(55, Math.min(canvas.height-55, b.y));
 
     drawBunny(b.x, b.y, 1.0);
 
     if(aabb(px,py,pw,ph, b.x-20, b.y-20, 40, 40) && invuln<=0){
       player.hit();
     }
-    if(b.x < -80) bunnies.splice(i,1);
+    if(b.x < -90) bunnies.splice(i,1);
   }
 
+  // Draw player last
   player.draw();
+
   updateUI();
   requestAnimationFrame(loop);
 }
