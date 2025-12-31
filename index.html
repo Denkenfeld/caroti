@@ -1,451 +1,585 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crazy Carrot Party!</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #E0F7FA; /* Fallback color */
-            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
-            touch-action: none;
-        }
-
-        /* The Chaos Background Canvas */
-        #bgCanvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1; /* Behind everything */
-            background: linear-gradient(to bottom, #FF9AA2, #FFB7B2, #FFDAC1, #E2F0CB, #B5EAD7, #C7CEEA);
-        }
-
-        /* The Main Game Container */
-        #gameContainer {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-
-        /* The Game Box */
-        canvas#gameCanvas {
-            background-color: rgba(255, 255, 255, 0.4); /* Slightly opaque to see background blur */
-            border: 4px solid #fff;
-            border-radius: 15px;
-            box-shadow: 0 0 50px rgba(0,0,0,0.2);
-            backdrop-filter: blur(5px); /* Blurs the background carrots slightly */
-        }
-
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            text-shadow: 2px 2px 0 #000;
-            font-size: 24px;
-            font-weight: bold;
-            pointer-events: none;
-            z-index: 20;
-        }
-
-        #water-warning {
-            position: absolute;
-            top: 60px;
-            left: 20px;
-            color: #0044ff;
-            font-weight: bold;
-            font-size: 18px;
-            display: none;
-            z-index: 20;
-            text-shadow: 1px 1px 0 #fff;
-        }
-
-        #startScreen, #gameOverScreen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-            border: 5px solid #FF8C00;
-            max-width: 80%;
-            z-index: 30;
-        }
-
-        h1 { margin: 0 0 10px; color: #FF8C00; }
-        p { margin: 10px 0 20px; font-size: 18px; color: #333; }
-        
-        button {
-            background: #FF8C00;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 20px;
-            border-radius: 50px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: transform 0.1s;
-            box-shadow: 0 4px 0 #cc7000;
-        }
-        button:hover { transform: scale(1.05); background: #e67e00; }
-        button:active { transform: scale(0.95); box-shadow: 0 1px 0 #cc7000; transform: translateY(3px); }
-        .hidden { display: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Flappy Carrot Man: Lives + Mushrooms</title>
+  <style>
+    body{margin:0;overflow:hidden;background:#222;font-family:'Comic Sans MS','Chalkboard SE',sans-serif;touch-action:none;user-select:none}
+    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:-1;background:linear-gradient(to bottom,#2c3e50,#4ca1af)}
+    #gameCanvas{display:block;margin:0 auto;width:100%;height:100vh;max-width:600px;border-left:2px solid rgba(255,255,255,.2);border-right:2px solid rgba(255,255,255,.2);background:rgba(0,0,0,.10)}
+    #ui{position:absolute;top:3%;width:100%;text-align:center;pointer-events:none;z-index:10;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.6)}
+    #score{font-size:54px;font-weight:900;line-height:1}
+    #meta{font-size:18px;font-weight:800;opacity:.95}
+    #meta span{margin:0 10px}
+    #start,#over{
+      position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:82%;max-width:430px;background:rgba(255,255,255,.95);
+      border:4px solid #ff8c00;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.5);
+      padding:22px;text-align:center;z-index:20
+    }
+    h1{margin:0 0 8px;color:#d35400;letter-spacing:1px}
+    p{margin:8px 0;color:#333}
+    #meme{margin:12px 0 6px;font-style:italic;color:#444;min-height:44px;display:flex;align-items:center;justify-content:center}
+    button{
+      background:linear-gradient(to bottom,#ff8c00,#e65100);color:#fff;border:none;cursor:pointer;
+      padding:14px 34px;font-size:20px;font-weight:900;border-radius:999px;box-shadow:0 5px 0 #bf360c;
+      transition:transform .1s,filter .1s
+    }
+    button:hover{transform:scale(1.05);filter:brightness(1.08)}
+    button:active{transform:translateY(3px) scale(.97);box-shadow:0 2px 0 #bf360c}
+    .hidden{display:none}
+    #flash{position:fixed;inset:0;background:#ff1744;opacity:0;pointer-events:none;z-index:15;transition:opacity .08s;mix-blend-mode:overlay}
+  </style>
 </head>
 <body>
 
-<!-- Background Animation Layer -->
 <canvas id="bgCanvas"></canvas>
+<div id="flash"></div>
 
-<!-- Main Game Layer -->
-<div id="gameContainer">
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="ui-layer">Score: <span id="scoreVal">0</span></div>
-    <div id="water-warning">Water Rising! Moving Slow! 🐌</div>
-
-    <div id="startScreen">
-        <h1>🥕 Crazy Carrot Party!</h1>
-        <p><b>Look at them go!</b><br>Inside the box, catch 💧 to Sing!<br>
-           Don't let the water rise or Bunnies bite!</p>
-        <button onclick="startGame()">Start Game</button>
-    </div>
-
-    <div id="gameOverScreen" class="hidden">
-        <h1 id="goTitle">Ouch! 🤕</h1>
-        <p id="goMessage">Game Over</p>
-        <p>Final Score: <span id="finalScore">0</span></p>
-        <button onclick="startGame()">Try Again</button>
-    </div>
+<div id="ui">
+  <div id="score">0</div>
+  <div id="meta">
+    <span id="lives">Lives: ❤️❤️❤️</span>
+    <span id="size">Size: 1.00x</span>
+    <span id="level">Level: 1</span>
+  </div>
 </div>
 
+<div id="start">
+  <h1>Flappy Carrot Man</h1>
+  <p>Click / Tap / Space to flap.</p>
+  <p>Start with 3 lives. 🍄 gives +1 life. Hit = -1 life.</p>
+  <button onclick="startGame()">PLAY</button>
+</div>
+
+<div id="over" class="hidden">
+  <h1>GAME OVER</h1>
+  <div id="meme">...</div>
+  <p>Score: <span id="finalScore">0</span></p>
+  <button onclick="restart()">AGAIN</button>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
 <script>
-    /* =========================================
-       BACKGROUND CHAOS (The Party Outside)
-       ========================================= */
-    const bgCanvas = document.getElementById('bgCanvas');
-    const bgCtx = bgCanvas.getContext('2d');
-    let bgCarrots = [];
-    const BG_CARROT_COUNT = 200;
+/* =========================
+   BACKGROUND: hundreds carrots
+   ========================= */
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+const bgCarrots = [];
+const BG_COUNT = 220;
 
-    function resizeBg() {
-        bgCanvas.width = window.innerWidth;
-        bgCanvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeBg);
-    resizeBg();
+function resizeBg(){ bgCanvas.width = innerWidth; bgCanvas.height = innerHeight; }
+addEventListener('resize', resizeBg); resizeBg();
 
-    class BgCarrot {
-        constructor() {
-            this.reset();
-            // Randomize starting Y so they are already everywhere
-            this.y = Math.random() * bgCanvas.height;
-        }
+class BgCarrot{
+  constructor(){ this.reset(true); }
+  reset(first=false){
+    this.x = Math.random()*bgCanvas.width;
+    this.y = first ? Math.random()*bgCanvas.height : bgCanvas.height + 80 + Math.random()*200;
+    this.s = Math.random()*0.65 + 0.10;
+    this.vy = Math.random()*1.3 + 0.35;
+    this.vx = (Math.random()-0.5)*0.6;
+    this.r = Math.random()*Math.PI*2;
+    this.vr = (Math.random()-0.5)*0.04;
+    this.a = Math.random()*0.35 + 0.10;
+    this.bop = Math.random()*2.2 + 0.8;
+    this.bopPhase = Math.random()*Math.PI*2;
+  }
+  update(t){
+    this.y -= this.vy;
+    this.x += this.vx + Math.sin(t*0.002 + this.bopPhase)*0.15;
+    this.r += this.vr;
+    if(this.y < -120) this.reset(false);
+    if(this.x < -100) this.x = bgCanvas.width + 100;
+    if(this.x > bgCanvas.width + 100) this.x = -100;
+  }
+  draw(t){
+    bgCtx.save();
+    bgCtx.translate(this.x, this.y);
+    bgCtx.rotate(this.r);
+    bgCtx.scale(this.s, this.s);
+    bgCtx.globalAlpha = this.a;
 
-        reset() {
-            this.x = Math.random() * bgCanvas.width;
-            this.y = -50;
-            this.size = Math.random() * 0.8 + 0.2; // Scale 0.2 to 1.0
-            this.speedY = Math.random() * 2 + 1;
-            this.speedX = (Math.random() - 0.5) * 2;
-            this.rotation = Math.random() * Math.PI * 2;
-            this.rotationSpeed = (Math.random() - 0.5) * 0.1;
-        }
+    const dance = Math.sin(t*0.01 + this.bopPhase) * this.bop;
+    bgCtx.fillStyle = '#ff8c00';
+    bgCtx.beginPath(); bgCtx.ellipse(0, 0, 11, 32 + dance, 0, 0, Math.PI*2); bgCtx.fill();
+    bgCtx.fillStyle = '#4caf50';
+    bgCtx.beginPath(); bgCtx.ellipse(0, -32 - dance, 6, 13, Math.PI/6, 0, Math.PI*2); bgCtx.fill();
 
-        update() {
-            this.y += this.speedY;
-            this.x += this.speedX;
-            this.rotation += this.rotationSpeed;
+    bgCtx.restore();
+  }
+}
+for(let i=0;i<BG_COUNT;i++) bgCarrots.push(new BgCarrot());
+function bgLoop(t){
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  for(const c of bgCarrots){ c.update(t); c.draw(t); }
+  requestAnimationFrame(bgLoop);
+}
+requestAnimationFrame(bgLoop);
 
-            if (this.y > bgCanvas.height + 50) this.reset();
-            if (this.x > bgCanvas.width + 50) this.x = -50;
-            if (this.x < -50) this.x = bgCanvas.width + 50;
-        }
+/* =========================
+   MAIN GAME
+   ========================= */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-        draw() {
-            bgCtx.save();
-            bgCtx.translate(this.x, this.y);
-            bgCtx.rotate(this.rotation);
-            bgCtx.scale(this.size, this.size);
-            
-            // Simple Carrot Shape for performance
-            bgCtx.fillStyle = '#FF8C00';
-            bgCtx.beginPath();
-            bgCtx.ellipse(0, 0, 10, 30, 0, 0, Math.PI*2);
-            bgCtx.fill();
-            
-            // Green Top
-            bgCtx.fillStyle = '#4CAF50';
-            bgCtx.beginPath();
-            bgCtx.ellipse(0, -30, 5, 10, Math.PI/4, 0, Math.PI*2);
-            bgCtx.fill();
-            
-            bgCtx.restore();
-        }
-    }
+const uiScore = document.getElementById('score');
+const uiLives = document.getElementById('lives');
+const uiSize  = document.getElementById('size');
+const uiLevel = document.getElementById('level');
+const flashEl = document.getElementById('flash');
 
-    // Init Background Carrots
-    for(let i=0; i<BG_CARROT_COUNT; i++) {
-        bgCarrots.push(new BgCarrot());
-    }
+const startEl = document.getElementById('start');
+const overEl  = document.getElementById('over');
+const memeEl  = document.getElementById('meme');
+const finalScoreEl = document.getElementById('finalScore');
 
-    function animateBackground() {
-        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-        bgCarrots.forEach(c => {
-            c.update();
-            c.draw();
-        });
-        requestAnimationFrame(animateBackground);
-    }
-    animateBackground(); // Start background immediately
+const music = new Audio('caroti.mp3');
+music.loop = true;
 
+function resizeGame(){
+  canvas.width = Math.min(innerWidth, 600);
+  canvas.height = innerHeight;
+}
+addEventListener('resize', resizeGame); resizeGame();
 
-    /* =========================================
-       MAIN GAME LOGIC
-       ========================================= */
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('scoreVal');
-    const finalScoreEl = document.getElementById('finalScore');
-    const startScreen = document.getElementById('startScreen');
-    const gameOverScreen = document.getElementById('gameOverScreen');
-    const goTitle = document.getElementById('goTitle');
-    const goMessage = document.getElementById('goMessage');
-    const warningEl = document.getElementById('water-warning');
+const memes = [
+  "Carrot man down! 🥕",
+  "Knife to meet you... again. 🔪",
+  "That was a *close shave* (but for carrots).",
+  "You got diced with extra drama."
+];
 
-    // Audio Setup
-    const music = new Audio('caroti.mp3');
-    music.loop = true; // Loops forever once started
+// EASIER SETTINGS
+let state='START';
+let frame=0, score=0, level=1;
 
-    // Game State
-    let gameRunning = false;
-    let score = 0;
-    let frames = 0;
-    let gameSpeed = 3;
-    let singTimer = 0;
-    
-    // Water Mechanics
-    let waterLevel = 0; 
-    const WATER_RISE_PER_DROP = 20;
+let speed=2.6;
+let spawnEvery=170;
+let bunnyEvery=360;
+let mushEvery=190;
+let movingKnifeChance=0.25;
 
-    function resizeGame() {
-        canvas.width = Math.min(window.innerWidth - 40, 500); // Keep box smaller
-        canvas.height = Math.min(window.innerHeight - 40, 700);
-    }
-    window.addEventListener('resize', resizeGame);
-    resizeGame();
+let lives=3;        // NEW: life counter
+let invuln=0;
 
-    // Inputs
-    const keys = { ArrowLeft: false, ArrowRight: false };
-    window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = true; });
-    window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = false; });
-    
-    window.addEventListener('touchstart', e => { 
-        const rect = canvas.getBoundingClientRect();
-        if(e.touches[0].clientX - rect.left < canvas.width/2) keys.ArrowLeft = true;
-        else keys.ArrowRight = true;
-    });
-    window.addEventListener('touchend', () => { keys.ArrowLeft = false; keys.ArrowRight = false; });
+let sizeMult=1.0;   // size is now just “fun + hitbox”, not lives
+const SIZE_UP=0.22;
+const SIZE_DOWN_ON_HIT=0.18;
 
-    // The Main Carrot (High Detail)
-    const player = {
-        x: canvas.width / 2,
-        y: canvas.height - 80,
-        width: 50,
-        height: 80,
-        baseSpeed: 7,
-        currentSpeed: 7,
-        draw: function() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            const wobble = Math.sin(frames * 0.1) * 3;
-            ctx.rotate(wobble * Math.PI / 180);
+function hearts(n){
+  // cap visual hearts so it doesn't become a giant UI wall
+  const shown = Math.min(n, 12);
+  const extra = n > shown ? ` +${n-shown}` : '';
+  return '❤️'.repeat(shown) + extra;
+}
 
-            // Legs
-            ctx.strokeStyle = '#333'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(-10, 30); ctx.quadraticCurveTo(-20, 50, -25, 60); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(10, 30); ctx.quadraticCurveTo(20, 50, 25, 60); ctx.stroke();
+function updateUI(){
+  uiScore.textContent = score;
+  uiLives.textContent = `Lives: ${hearts(lives)}`;
+  uiSize.textContent = `Size: ${sizeMult.toFixed(2)}x`;
+  uiLevel.textContent = `Level: ${level}`;
+}
 
-            // Arms
-            let armOffset = (singTimer > 0 || waterLevel > 100) ? -25 : 0;
-            ctx.beginPath(); ctx.moveTo(-20, -10); ctx.quadraticCurveTo(-40, -30 + wobble + armOffset, -50, -20 + armOffset); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(20, -10); ctx.quadraticCurveTo(40, -30 - wobble + armOffset, 50, -20 + armOffset); ctx.stroke();
+function computeLevel(){
+  level = Math.floor(score / 15) + 1;
+  speed = 2.6 + (level-1)*0.20;
+  spawnEvery = Math.max(120, 170 - (level-1)*3);
+  bunnyEvery = Math.max(240, 360 - (level-1)*6);
+  mushEvery  = Math.max(160, 190 - (level-1)*1);
+}
 
-            // Body
-            ctx.fillStyle = '#FF8C00'; 
-            ctx.beginPath();
-            ctx.moveTo(-25, -40); ctx.bezierCurveTo(-35, -20, -10, 50, 0, 55); 
-            ctx.bezierCurveTo(10, 50, 35, -20, 25, -40); ctx.quadraticCurveTo(0, -45, -25, -40); ctx.fill();
+function flap(){
+  if(state!=='PLAY') return;
+  player.vy = -7.6;
+  if(music.paused) music.play().catch(()=>{});
+}
+addEventListener('mousedown', flap);
+addEventListener('touchstart', (e)=>{ e.preventDefault(); flap(); }, {passive:false});
+addEventListener('keydown', (e)=>{ if(e.code==='Space'||e.code==='ArrowUp') flap(); });
 
-            // Green Top
-            ctx.fillStyle = '#4CAF50';
-            ctx.beginPath(); ctx.ellipse(0, -45, 10, 20, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(-5, -45, 10, 15, -Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+const player = {
+  x: 110,
+  y: 200,
+  vy: 0,
+  gravity: 0.28,
+  baseW: 44,
+  baseH: 86,
+  draw(){
+    ctx.save();
+    ctx.translate(this.x, this.y);
 
-            // Face
-            ctx.fillStyle = 'white';
-            ctx.beginPath(); ctx.arc(-10, -15, 8, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(10, -15, 8, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = 'black';
-            ctx.beginPath(); ctx.arc(-10 + wobble/2, -15, 3, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(10 + wobble/2, -15, 3, 0, Math.PI * 2); ctx.fill();
-            
-            // Mouth
-            if (singTimer > 0) {
-                ctx.fillStyle = '#330000';
-                let openAmount = 5 + Math.sin(frames * 0.5) * 4;
-                ctx.beginPath(); ctx.ellipse(0, 0, 8, openAmount, 0, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.arc(0, openAmount - 2, 4, 0, Math.PI * 2); ctx.fill();
-            } else if (waterLevel > 120) {
-                ctx.fillStyle = 'black'; ctx.beginPath(); ctx.ellipse(0, 5, 6, 8, 0, 0, Math.PI*2); ctx.fill();
-            } else {
-                ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI, false); ctx.fill();
-            }
+    const w = this.baseW * sizeMult;
+    const h = this.baseH * sizeMult;
 
-            ctx.restore();
-        },
-        update: function() {
-            let resistance = (waterLevel > 20) ? (waterLevel - 20) * 0.05 : 0;
-            this.currentSpeed = Math.max(1.5, this.baseSpeed - resistance);
+    if(invuln>0 && Math.floor(frame/5)%2===0) ctx.globalAlpha=0.55;
 
-            if (resistance > 2) warningEl.style.display = 'block';
-            else warningEl.style.display = 'none';
+    const rot = Math.min(Math.PI/6, Math.max(-Math.PI/6, this.vy*0.06));
+    ctx.rotate(rot);
 
-            if (keys.ArrowLeft && this.x > 30) this.x -= this.currentSpeed;
-            if (keys.ArrowRight && this.x < canvas.width - 30) this.x += this.currentSpeed;
-        }
-    };
+    // limbs
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = Math.max(3, 4*sizeMult);
+    ctx.lineCap = 'round';
 
-    function drawVectorBunny(x, y) {
-        ctx.save(); ctx.translate(x, y);
-        ctx.fillStyle = 'white'; ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.ellipse(-10, -25, 6, 15, -0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.ellipse(-10, -25, 3, 10, -0.2, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.ellipse(10, -25, 6, 15, 0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.ellipse(10, -25, 3, 10, 0.2, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(-7, -2, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(7, -2, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'white'; ctx.strokeStyle = '#333';
-        ctx.fillRect(-3, 5, 3, 5); ctx.strokeRect(-3, 5, 3, 5);
-        ctx.fillRect(0, 5, 3, 5); ctx.strokeRect(0, 5, 3, 5);
-        ctx.restore();
-    }
+    const wob = Math.sin(frame*0.18) * (2.5*sizeMult);
+    const armUp = Math.min(1, Math.max(0, (-this.vy)/8));
+    const hipY = h*0.22;
 
-    function drawDrop(x, y) {
-        ctx.fillStyle = '#00BFFF'; ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2);
-        ctx.moveTo(x, y - 10); ctx.lineTo(x, y - 20); ctx.stroke(); ctx.fill();
-        ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(x - 3, y - 3, 3, 0, Math.PI*2); ctx.fill();
-    }
+    // legs
+    ctx.beginPath();
+    ctx.moveTo(-w*0.15, hipY);
+    ctx.quadraticCurveTo(-w*0.32, hipY + h*0.35, -w*0.22, hipY + h*0.52);
+    ctx.stroke();
 
-    function drawWater() {
-        if (waterLevel <= 0) return;
-        const yPos = canvas.height - waterLevel;
-        ctx.beginPath(); ctx.moveTo(0, yPos);
-        for (let i = 0; i <= canvas.width; i += 20) {
-            let waveY = yPos + Math.sin((frames * 0.05) + (i * 0.05)) * 5;
-            ctx.lineTo(i, waveY);
-        }
-        ctx.lineTo(canvas.width, canvas.height); ctx.lineTo(0, canvas.height); ctx.closePath();
-        const gradient = ctx.createLinearGradient(0, yPos, 0, canvas.height);
-        gradient.addColorStop(0, 'rgba(0, 150, 255, 0.6)'); gradient.addColorStop(1, 'rgba(0, 0, 150, 0.8)');
-        ctx.fillStyle = gradient; ctx.fill();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 3; ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(w*0.15, hipY);
+    ctx.quadraticCurveTo(w*0.32, hipY + h*0.35, w*0.22, hipY + h*0.52);
+    ctx.stroke();
 
-    const items = [];
-    const obstacles = [];
+    // arms
+    const shoulderY = -h*0.05;
+    const armLift = (-h*0.22) * armUp;
 
-    function spawnObjects() {
-        if (frames % 60 === 0) items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, speed: gameSpeed });
-        if (frames % 90 === 0) obstacles.push({ x: Math.random() * (canvas.width - 40) + 20, y: -40, speed: gameSpeed + 1.5 });
+    ctx.beginPath();
+    ctx.moveTo(-w*0.18, shoulderY);
+    ctx.quadraticCurveTo(-w*0.45, shoulderY + wob + armLift, -w*0.55, shoulderY - 6*sizeMult + armLift);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(w*0.18, shoulderY);
+    ctx.quadraticCurveTo(w*0.45, shoulderY - wob + armLift, w*0.55, shoulderY - 6*sizeMult + armLift);
+    ctx.stroke();
+
+    // carrot body
+    ctx.fillStyle = '#ff8c00';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, w*0.30, h*0.42, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    const hl = ctx.createRadialGradient(-w*0.12, -h*0.15, 2, -w*0.12, -h*0.15, w);
+    hl.addColorStop(0,'rgba(255,255,255,0.35)');
+    hl.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    ctx.beginPath();
+    ctx.ellipse(-w*0.10, -h*0.10, w*0.18, h*0.22, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // leafy top
+    ctx.fillStyle = '#4caf50';
+    ctx.beginPath();
+    ctx.ellipse(0, -h*0.50, 10*sizeMult, 18*sizeMult, Math.PI/9, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(-8*sizeMult, -h*0.48, 9*sizeMult, 14*sizeMult, -Math.PI/10, 0, Math.PI*2);
+    ctx.fill();
+
+    // face: reacts to size & lives
+    const mood = (lives <= 1) ? 3 : Math.min(3, Math.floor((sizeMult - 1)/0.7)+1);
+    const eyeR = 6*sizeMult;
+    const eyeY = -h*0.15;
+
+    ctx.fillStyle='white';
+    ctx.beginPath(); ctx.arc(-eyeR*0.95, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( eyeR*0.95, eyeY, eyeR, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle='black';
+    const pj = Math.sin(frame*0.25)*(0.7+mood*0.3);
+    ctx.beginPath(); ctx.arc(-eyeR*0.95 + pj, eyeY, 2.1*sizeMult, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc( eyeR*0.95 + pj, eyeY, 2.1*sizeMult, 0, Math.PI*2); ctx.fill();
+
+    ctx.fillStyle='black';
+    if(mood===1){
+      ctx.beginPath(); ctx.arc(0, h*0.02, 7*sizeMult, 0, Math.PI, false); ctx.fill();
+    }else if(mood===2){
+      ctx.beginPath(); ctx.ellipse(0, h*0.08, 6*sizeMult, 10*sizeMult, 0, 0, Math.PI*2); ctx.fill();
+    }else{
+      ctx.beginPath(); ctx.ellipse(0, h*0.10, 9*sizeMult, 13*sizeMult, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='pink';
+      ctx.beginPath(); ctx.ellipse(0, h*0.15, 5*sizeMult, 5*sizeMult, 0, 0, Math.PI*2); ctx.fill();
     }
 
-    function updateGame() {
-        if (!gameRunning) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        frames++;
-        if(singTimer > 0) singTimer--;
-        
-        player.update();
-        player.draw();
-        drawWater();
-        spawnObjects();
+    ctx.restore();
+  },
+  update(){
+    this.vy += this.gravity;
+    this.y += this.vy;
+    const margin = 26;
+    if(this.y < margin){ this.y = margin; this.vy = 0; }
+    if(this.y > canvas.height - margin){ this.y = canvas.height - margin; this.vy = 0; }
+  },
+  hit(){
+    if(invuln>0) return;
 
-        for (let i = items.length - 1; i >= 0; i--) {
-            let item = items[i];
-            item.y += item.speed;
-            drawDrop(item.x, item.y);
-            let dx = item.x - player.x; let dy = item.y - player.y;
-            
-            if (Math.sqrt(dx*dx + dy*dy) < 50) {
-                // CAUGHT DROP
-                score += 10;
-                scoreEl.innerText = score;
-                items.splice(i, 1);
-                singTimer = 40; // Mouth moves
-                
-                // MUSIC: Start if not playing, but do not restart
-                if (music.paused) {
-                    music.play().catch(e=>console.log(e));
-                }
-            } else if (item.y > canvas.height) {
-                items.splice(i, 1);
-                waterLevel += WATER_RISE_PER_DROP;
-            }
-        }
+    lives -= 1;                       // NEW: lose a life
+    sizeMult = Math.max(0.65, sizeMult - SIZE_DOWN_ON_HIT); // still shrink for feedback
+    invuln = 70;
 
-        for (let i = obstacles.length - 1; i >= 0; i--) {
-            let obs = obstacles[i];
-            obs.y += obs.speed;
-            drawVectorBunny(obs.x, obs.y);
-            let dx = obs.x - player.x; let dy = obs.y - player.y;
-            if (Math.sqrt(dx*dx + dy*dy) < 40) endGame("eaten");
-            else if (obs.y > canvas.height) obstacles.splice(i, 1);
-        }
+    flashEl.style.opacity = 0.50;
+    setTimeout(()=>flashEl.style.opacity=0, 110);
 
-        if ((canvas.height - waterLevel) < (player.y - 20)) endGame("drowned");
-        requestAnimationFrame(updateGame);
+    if(lives <= 0) endGame();
+  }
+};
+
+function aabb(ax,ay,aw,ah,bx,by,bw,bh){
+  return ax<bx+bw && ax+aw>bx && ay<by+bh && ay+ah>by;
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function drawKnife3D(x,y,w,h,dir){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.shadowColor='rgba(0,0,0,0.55)';
+  ctx.shadowBlur=10;
+  ctx.shadowOffsetX=5;
+  ctx.shadowOffsetY=5;
+
+  const handleH=52;
+
+  if(dir==='down'){
+    let hg=ctx.createLinearGradient(0,-handleH,w,-handleH);
+    hg.addColorStop(0,'#1f2b35'); hg.addColorStop(0.35,'#5db6c8'); hg.addColorStop(1,'#141b22');
+    ctx.fillStyle=hg; roundRect(5,-handleH,w-10,handleH,7); ctx.fill();
+    ctx.fillStyle='#f1c40f';
+    ctx.beginPath(); ctx.arc(w/2,-38,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w/2,-16,4,0,Math.PI*2); ctx.fill();
+
+    const bg=ctx.createLinearGradient(0,0,w,0);
+    bg.addColorStop(0,'#9aa4aa'); bg.addColorStop(0.18,'#ffffff'); bg.addColorStop(0.52,'#e8eef1'); bg.addColorStop(1,'#6f7a80');
+    ctx.fillStyle=bg;
+
+    ctx.beginPath();
+    ctx.moveTo(6,0); ctx.lineTo(w-6,0);
+    ctx.lineTo(w-6,h-34);
+    ctx.quadraticCurveTo(w*0.5,h,6,h-2);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle='rgba(255,255,255,0.85)';
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(12,0); ctx.lineTo(12,Math.max(0,h-10)); ctx.stroke();
+  }else{
+    let hg=ctx.createLinearGradient(0,0,w,0);
+    hg.addColorStop(0,'#1f2b35'); hg.addColorStop(0.35,'#5db6c8'); hg.addColorStop(1,'#141b22');
+    ctx.fillStyle=hg; roundRect(5,0,w-10,handleH,7); ctx.fill();
+    ctx.fillStyle='#f1c40f';
+    ctx.beginPath(); ctx.arc(w/2,16,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w/2,38,4,0,Math.PI*2); ctx.fill();
+
+    const tipY = -h + handleH;
+    const bg=ctx.createLinearGradient(0,0,w,0);
+    bg.addColorStop(0,'#9aa4aa'); bg.addColorStop(0.18,'#ffffff'); bg.addColorStop(0.52,'#e8eef1'); bg.addColorStop(1,'#6f7a80');
+    ctx.fillStyle=bg;
+
+    ctx.beginPath();
+    ctx.moveTo(6,handleH); ctx.lineTo(w-6,handleH);
+    ctx.lineTo(w-6,tipY+34);
+    ctx.quadraticCurveTo(w*0.5,tipY,6,tipY+2);
+    ctx.closePath(); ctx.fill();
+
+    ctx.strokeStyle='rgba(255,255,255,0.85)';
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(12,handleH); ctx.lineTo(12,tipY+10); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawMushroom(x,y,scale=1){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.fillStyle='#f5f5f5';
+  ctx.beginPath(); ctx.roundRect(-6,-2,12,18,6); ctx.fill();
+  const capG=ctx.createRadialGradient(-6,-10,2,0,-10,28);
+  capG.addColorStop(0,'#ffebee'); capG.addColorStop(0.35,'#ff5252'); capG.addColorStop(1,'#b71c1c');
+  ctx.fillStyle=capG;
+  ctx.beginPath(); ctx.ellipse(0,-10,18,12,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  for(const s of [[-8,-12,3],[2,-14,2.5],[9,-9,2.8],[-2,-7,2.2]]){
+    ctx.beginPath(); ctx.arc(s[0],s[1],s[2],0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawBunny(x,y,scale=1){
+  ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(0,0,0,0.15)';
+  ctx.beginPath(); ctx.ellipse(0,18,18,6,0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='white'; ctx.strokeStyle='rgba(0,0,0,0.1)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.ellipse(-8,-18,6,16,-0.2,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse( 8,-18,6,16, 0.2,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='pink';
+  ctx.beginPath(); ctx.ellipse(-8,-18,3,11,-0.2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse( 8,-18,3,11, 0.2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='white';
+  ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='black';
+  ctx.beginPath(); ctx.arc(-6,-2,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 6,-2,2.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0,6,5,0,Math.PI,false); ctx.fill();
+  ctx.fillStyle='white'; ctx.fillRect(-3,6,3,5); ctx.fillRect(0,6,3,5);
+  ctx.restore();
+}
+
+// Entities
+const knifePairs=[], mushrooms=[], bunnies=[];
+
+function spawnKnifePair(){
+  const gap = 280 - Math.min(70, (level-1)*4);
+  const minY = 140;
+  const maxY = canvas.height - 140;
+  const centerY = Math.random()*(maxY-minY) + minY;
+
+  const moving = Math.random() < movingKnifeChance;
+  const amp = moving ? (14 + Math.random()*35) : 0;
+  const freq = moving ? (0.010 + Math.random()*0.015) : 0;
+  const phase = Math.random()*Math.PI*2;
+
+  knifePairs.push({ x: canvas.width+30, centerY, gap, w: 54, moving, amp, freq, phase, passed:false });
+}
+function spawnMushroom(){
+  mushrooms.push({ x: canvas.width+30, y: 110 + Math.random()*(canvas.height-220), bobPhase: Math.random()*Math.PI*2 });
+}
+function spawnBunny(){
+  bunnies.push({
+    x: canvas.width+60,
+    y: 110 + Math.random()*(canvas.height-220),
+    vx: speed + 0.7 + Math.random()*0.8,
+    vy: (Math.random()-0.5)*0.6,
+    t: 0
+  });
+}
+
+function applyMushroom(){
+  lives += 1;                               // NEW: gain a life
+  sizeMult = Math.min(5.0, sizeMult + SIZE_UP);
+}
+
+function endGame(){
+  state='OVER';
+  overEl.classList.remove('hidden');
+  finalScoreEl.textContent = score;
+  memeEl.textContent = memes[Math.floor(Math.random()*memes.length)];
+}
+
+function reset(){
+  frame=0; score=0; level=1;
+  speed=2.6; spawnEvery=170; bunnyEvery=360; mushEvery=190; movingKnifeChance=0.25;
+  lives=3; invuln=0; sizeMult=1.0;
+  player.y=200; player.vy=0;
+  knifePairs.length=0; mushrooms.length=0; bunnies.length=0;
+  updateUI();
+}
+
+function startGame(){
+  startEl.classList.add('hidden');
+  overEl.classList.add('hidden');
+  reset();
+  state='PLAY';
+  requestAnimationFrame(loop);
+}
+function restart(){
+  overEl.classList.add('hidden');
+  reset();
+  state='PLAY';
+  requestAnimationFrame(loop);
+}
+
+function loop(){
+  if(state!=='PLAY') return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  frame++;
+  if(invuln>0) invuln--;
+
+  computeLevel();
+
+  if(frame % spawnEvery === 0) spawnKnifePair();
+  if(frame % mushEvery === 0) spawnMushroom();
+  if(frame % bunnyEvery === 0) spawnBunny();
+
+  player.update();
+
+  // forgiving player hitbox
+  const pw = 24 * sizeMult;
+  const ph = 46 * sizeMult;
+  const px = player.x - pw/2;
+  const py = player.y - ph/2;
+
+  // knives
+  for(let i=knifePairs.length-1;i>=0;i--){
+    const k = knifePairs[i];
+    k.x -= speed;
+
+    const wob = k.moving ? Math.sin(frame*k.freq + k.phase)*k.amp : 0;
+    const cy = k.centerY + wob;
+
+    const topH = cy - k.gap/2;
+    const botY = cy + k.gap/2;
+    const botH = canvas.height - botY;
+
+    drawKnife3D(k.x, 0, k.w, Math.max(10, topH), 'down');
+    drawKnife3D(k.x, canvas.height, k.w, Math.max(10, botH), 'up');
+
+    // narrower knife hitbox (easier)
+    const kx = k.x + 8;
+    const kw = k.w - 16;
+
+    const hitTop = aabb(px,py,pw,ph, kx, 0, kw, topH);
+    const hitBot = aabb(px,py,pw,ph, kx, botY, kw, botH);
+    if((hitTop||hitBot) && invuln<=0) player.hit();
+
+    if(!k.passed && k.x + k.w < player.x){
+      score += 1;
+      k.passed = true;
+      updateUI();
     }
+    if(k.x + k.w < -80) knifePairs.splice(i,1);
+  }
 
-    function startGame() {
-        startScreen.classList.add('hidden');
-        gameOverScreen.classList.add('hidden');
-        warningEl.style.display = 'none';
-        score = 0; frames = 0; gameSpeed = 3; singTimer = 0; waterLevel = 0;
-        scoreEl.innerText = score;
-        items.length = 0; obstacles.length = 0;
-        player.x = canvas.width / 2;
-        player.y = canvas.height - 80;
-        gameRunning = true;
-        updateGame();
-    }
+  // mushrooms
+  for(let i=mushrooms.length-1;i>=0;i--){
+    const m = mushrooms[i];
+    m.x -= speed*0.85;
+    const bob = Math.sin(frame*0.06 + m.bobPhase)*5;
+    drawMushroom(m.x, m.y+bob, 1.0);
 
-    function endGame(reason) {
-        gameRunning = false;
-        finalScoreEl.innerText = score;
-        if (reason === "drowned") {
-            goTitle.innerText = "Glub Glub! 🌊";
-            goMessage.innerText = "Too much water!";
-        } else {
-            goTitle.innerText = "Ouch! 🐰";
-            goMessage.innerText = "The bunnies got you!";
-        }
-        gameOverScreen.classList.remove('hidden');
+    if(aabb(px,py,pw,ph, m.x-18, (m.y+bob)-22, 36, 44)){
+      applyMushroom();
+      mushrooms.splice(i,1);
+      updateUI();
+    } else if(m.x < -60){
+      mushrooms.splice(i,1);
     }
+  }
+
+  // bunnies
+  for(let i=bunnies.length-1;i>=0;i--){
+    const b = bunnies[i];
+    b.t += 1;
+    b.x -= b.vx;
+
+    const chase = (player.y - b.y) * 0.006;
+    b.y += b.vy + chase + Math.sin((frame+b.t)*0.08)*0.6;
+    b.y = Math.max(50, Math.min(canvas.height-50, b.y));
+
+    drawBunny(b.x, b.y, 1.0);
+
+    if(aabb(px,py,pw,ph, b.x-20, b.y-20, 40, 40) && invuln<=0){
+      player.hit();
+    }
+    if(b.x < -80) bunnies.splice(i,1);
+  }
+
+  player.draw();
+  updateUI();
+  requestAnimationFrame(loop);
+}
 </script>
-
 </body>
 </html>
