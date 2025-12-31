@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crazy Carrot: Deep Water Danger</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            /* Rainbow Background */
+            background: linear-gradient(to bottom, 
+                #FF9AA2, #FFB7B2, #FFDAC1, #E2F0CB, #B5EAD7, #C7CEEA);
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            touch-action: none;
+        }
+        #gameContainer {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            /* Remove border so water touches edges naturally */
+            background-color: transparent; 
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 24px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #water-warning {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: #0044ff;
+            font-weight: bold;
+            font-size: 18px;
+            display: none;
+            z-index: 10;
+        }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 5px solid #FF8C00;
+            max-width: 80%;
+            z-index: 20;
+        }
+        h1 { margin: 0 0 10px; color: #FF8C00; }
+        p { margin: 10px 0 20px; font-size: 18px; color: #333; }
+        button {
+            background: #FF8C00;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 0 #cc7000;
+        }
+        button:hover { transform: scale(1.05); background: #e67e00; }
+        button:active { transform: scale(0.95); box-shadow: 0 1px 0 #cc7000; transform: translateY(3px); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">Score: <span id="scoreVal">0</span></div>
+    <div id="water-warning">High Water! Moving Slow! 🐌</div>
+
+    <div id="startScreen">
+        <h1>🥕 Deep Water Danger!</h1>
+        <p>Catch 💧 to Sing & Score!<br>
+           <b>Missed drops raise the water!</b><br>
+           Don't drown and avoid Bunnies 🐰</p>
+        <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <div id="gameOverScreen" class="hidden">
+        <h1 id="goTitle">Ouch! 🤕</h1>
+        <p id="goMessage">The bunnies caught you!</p>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button onclick="startGame()">Try Again</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('scoreVal');
+    const finalScoreEl = document.getElementById('finalScore');
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const goTitle = document.getElementById('goTitle');
+    const goMessage = document.getElementById('goMessage');
+    const warningEl = document.getElementById('water-warning');
+
+    // Audio Setup
+    const music = new Audio('caroti.mp3');
+    music.loop = false;
+
+    // Game State
+    let gameRunning = false;
+    let score = 0;
+    let frames = 0;
+    let gameSpeed = 3;
+    let singTimer = 0;
+    
+    // Water Mechanics
+    let waterLevel = 0; // Height of water from bottom in pixels
+    const WATER_RISE_PER_DROP = 15;
+    const MAX_WATER_LEVEL = 180; // Approximate height where carrot drowns completely
+
+    function resize() {
+        canvas.width = Math.min(window.innerWidth, 600);
+        canvas.height = Math.min(window.innerHeight, 800);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Inputs
+    const keys = { ArrowLeft: false, ArrowRight: false };
+    window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = true; });
+    window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.code)) keys[e.code] = false; });
+    
+    // Touch
+    window.addEventListener('touchstart', e => { 
+        const rect = canvas.getBoundingClientRect();
+        if(e.touches[0].clientX - rect.left < canvas.width/2) keys.ArrowLeft = true;
+        else keys.ArrowRight = true;
+    });
+    window.addEventListener('touchend', () => { keys.ArrowLeft = false; keys.ArrowRight = false; });
+
+    // The Carrot
+    const player = {
+        x: canvas.width / 2,
+        y: canvas.height - 80, // Lowered slightly so feet touch bottom area
+        width: 50,
+        height: 80,
+        baseSpeed: 7,
+        currentSpeed: 7,
+        draw: function() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            
+            // Wobbly animation
+            const wobble = Math.sin(frames * 0.1) * 3;
+            ctx.rotate(wobble * Math.PI / 180);
+
+            // Legs
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(-10, 30); ctx.quadraticCurveTo(-20, 50, -25, 60); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(10, 30); ctx.quadraticCurveTo(20, 50, 25, 60); ctx.stroke();
+
+            // Arms (Raise if singing or drowning!)
+            let armOffset = (singTimer > 0 || waterLevel > 100) ? -25 : 0;
+            ctx.beginPath(); ctx.moveTo(-20, -10); ctx.quadraticCurveTo(-40, -30 + wobble + armOffset, -50, -20 + armOffset); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(20, -10); ctx.quadraticCurveTo(40, -30 - wobble + armOffset, 50, -20 + armOffset); ctx.stroke();
+
+            // Body
+            ctx.fillStyle = '#FF8C00'; 
+            ctx.beginPath();
+            ctx.moveTo(-25, -40);
+            ctx.bezierCurveTo(-35, -20, -10, 50, 0, 55); 
+            ctx.bezierCurveTo(10, 50, 35, -20, 25, -40); 
+            ctx.quadraticCurveTo(0, -45, -25, -40); 
+            ctx.fill();
+
+            // Green Top
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath(); ctx.ellipse(0, -45, 10, 20, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(-5, -45, 10, 15, -Math.PI / 4, 0, Math.PI * 2); ctx.fill();
+
+            // Face
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(-10, -15, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10, -15, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath(); ctx.arc(-10 + wobble/2, -15, 3, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10 + wobble/2, -15, 3, 0, Math.PI * 2); ctx.fill();
+            
+            // Mouth
+            if (singTimer > 0) {
+                ctx.fillStyle = '#330000';
+                let openAmount = 5 + Math.sin(frames * 0.5) * 4;
+                ctx.beginPath(); ctx.ellipse(0, 0, 8, openAmount, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.arc(0, openAmount - 2, 4, 0, Math.PI * 2); ctx.fill();
+            } else if (waterLevel > 120) {
+                 // Worried mouth if deep water
+                ctx.fillStyle = 'black';
+                ctx.beginPath(); ctx.ellipse(0, 5, 6, 8, 0, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.fillStyle = 'black';
+                ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI, false); ctx.fill();
+            }
+
+            ctx.restore();
+        },
+        update: function() {
+            // Calculate speed reduction based on water level
+            // Feet are approx at canvas.height - 20.
+            // If water > 20, we are wading.
+            let resistance = 0;
+            if (waterLevel > 20) {
+                resistance = (waterLevel - 20) * 0.05; // 0.05 speed lost per pixel
+            }
+            this.currentSpeed = Math.max(1.5, this.baseSpeed - resistance);
+
+            // Update UI Warning
+            if (resistance > 2) warningEl.style.display = 'block';
+            else warningEl.style.display = 'none';
+
+            if (keys.ArrowLeft && this.x > 30) this.x -= this.currentSpeed;
+            if (keys.ArrowRight && this.x < canvas.width - 30) this.x += this.currentSpeed;
+        }
+    };
+
+    function drawVectorBunny(x, y) {
+        ctx.save();
+        ctx.translate(x, y);
+        
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        // Ears
+        ctx.beginPath(); ctx.ellipse(-10, -25, 6, 15, -0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.ellipse(-10, -25, 3, 10, -0.2, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.ellipse(10, -25, 6, 15, 0.2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = 'pink'; ctx.beginPath(); ctx.ellipse(10, -25, 3, 10, 0.2, 0, Math.PI*2); ctx.fill();
+
+        // Body
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+        // Face
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(-7, -2, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(7, -2, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.strokeStyle = '#333';
+        ctx.fillRect(-3, 5, 3, 5); ctx.strokeRect(-3, 5, 3, 5);
+        ctx.fillRect(0, 5, 3, 5); ctx.strokeRect(0, 5, 3, 5);
+
+        ctx.restore();
+    }
+
+    function drawDrop(x, y) {
+        ctx.fillStyle = '#00BFFF';
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.moveTo(x, y - 10);
+        ctx.lineTo(x, y - 20);
+        ctx.stroke(); ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(x - 3, y - 3, 3, 0, Math.PI*2); ctx.fill();
+    }
+
+    function drawWater() {
+        if (waterLevel <= 0) return;
+        
+        const yPos = canvas.height - waterLevel;
+        
+        // Water Surface Line
+        ctx.beginPath();
+        ctx.moveTo(0, yPos);
+        // Little wave animation
+        for (let i = 0; i <= canvas.width; i += 20) {
+            let waveY = yPos + Math.sin((frames * 0.05) + (i * 0.05)) * 5;
+            ctx.lineTo(i, waveY);
+        }
+        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(0, canvas.height);
+        ctx.closePath();
+        
+        // Water Color (Semi-transparent blue)
+        const gradient = ctx.createLinearGradient(0, yPos, 0, canvas.height);
+        gradient.addColorStop(0, 'rgba(0, 150, 255, 0.6)');
+        gradient.addColorStop(1, 'rgba(0, 0, 150, 0.8)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+        
+        // Top highlight
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    const items = [];
+    const obstacles = [];
+
+    function spawnObjects() {
+        if (frames % 60 === 0) { 
+            items.push({ x: Math.random() * (canvas.width - 40) + 20, y: -20, size: 20, speed: gameSpeed });
+        }
+        if (frames % 90 === 0) { 
+            obstacles.push({ x: Math.random() * (canvas.width - 40) + 20, y: -40, radius: 20, speed: gameSpeed + 1.5 });
+        }
+    }
+
+    function updateGame() {
+        if (!gameRunning) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        frames++;
+        if(singTimer > 0) singTimer--;
+        
+        // 1. Draw Player
+        player.update();
+        player.draw();
+
+        // 2. Draw Water (Over player legs, under head if deep)
+        drawWater();
+
+        // 3. Spawn
+        spawnObjects();
+
+        // 4. Update Water Drops
+        for (let i = items.length - 1; i >= 0; i--) {
+            let item = items[i];
+            item.y += item.speed;
+            drawDrop(item.x, item.y);
+
+            let dx = item.x - player.x;
+            let dy = item.y - player.y;
+            
+            // Hit detection
+            if (Math.sqrt(dx*dx + dy*dy) < 50) {
+                // Caught!
+                score += 10;
+                scoreEl.innerText = score;
+                items.splice(i, 1);
+                singTimer = 60; 
+                music.currentTime = 0; 
+                music.play().catch(e=>{});
+            } else if (item.y > canvas.height) {
+                // MISSED! WATER RISES!
+                items.splice(i, 1);
+                waterLevel += WATER_RISE_PER_DROP;
+            }
+        }
+
+        // 5. Update Bunnies
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let obs = obstacles[i];
+            obs.y += obs.speed;
+            drawVectorBunny(obs.x, obs.y);
+
+            let dx = obs.x - player.x;
+            let dy = obs.y - player.y;
+            if (Math.sqrt(dx*dx + dy*dy) < 40) { 
+                endGame("eaten");
+            } else if (obs.y > canvas.height) {
+                obstacles.splice(i, 1);
+            }
+        }
+
+        // 6. Check Drowning
+        // Player feet are at +60 relative to player.y.
+        // Top of leaves is roughly -60 relative to player.y.
+        // Total height ~120px. 
+        // If water reaches near the eyes (approx -15 relative), game over.
+        // That is approx 75px from feet. 
+        // We set MAX_WATER_LEVEL roughly visually.
+        
+        // Let's use a dynamic check based on player position
+        // Top of player relative to canvas bottom:
+        // (canvas.height - player.y) + 60 is feet.
+        // (canvas.height - player.y) - 50 is top.
+        // This is tricky because y grows down.
+        // Visual feet: player.y + 60. 
+        // Visual top: player.y - 50.
+        // Water surface Y: canvas.height - waterLevel.
+        
+        // Game over if waterSurfaceY < player.y - 20 (Eyes level)
+        if ((canvas.height - waterLevel) < (player.y - 20)) {
+            endGame("drowned");
+        }
+
+        requestAnimationFrame(updateGame);
+    }
+
+    function startGame() {
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        warningEl.style.display = 'none';
+        score = 0;
+        frames = 0;
+        gameSpeed = 3;
+        singTimer = 0;
+        waterLevel = 0; // Reset water
+        scoreEl.innerText = score;
+        items.length = 0;
+        obstacles.length = 0;
+        player.x = canvas.width / 2;
+        player.currentSpeed = player.baseSpeed;
+        
+        // Reset player Y in case we changed it
+        player.y = canvas.height - 80;
+
+        gameRunning = true;
+        updateGame();
+    }
+
+    function endGame(reason) {
+        gameRunning = false;
+        finalScoreEl.innerText = score;
+        
+        if (reason === "drowned") {
+            goTitle.innerText = "Glub Glub! 🌊";
+            goMessage.innerText = "The water got too deep! You drowned!";
+        } else {
+            goTitle.innerText = "Ouch! 🐰";
+            goMessage.innerText = "The bunnies caught you!";
+        }
+        
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    resize();
+</script>
+
+</body>
+</html>
